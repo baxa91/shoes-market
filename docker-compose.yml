@@ -15,8 +15,8 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/proj
-      - /proj/bin
+      - .:/project
+      - /project/bin
     networks:
       main: { }
 
