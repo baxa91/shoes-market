@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "shoes-market"
+version = "0.1.0"
+description = ""
+authors = ["Bakhytbek <baxa.aseke@gmail.com>"]
+readme = "README.md"
+packages = [{include = "shoes_market"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.99.1"
+uvicorn = "^0.22.0"
+sqlalchemy = "^2.0.15"
+alembic = "^1.11.1"
+asyncpg = "^0.27.0"
+psycopg = {extras = ["binary"], version = "^3.1.9"}
+pyjwt = "^2.6.0"
+passlib = "^1.7.4"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.3.1"
+pytest-asyncio = "^0.21.0"
+pytest-cov = "^4.0.0"
+pytest-env = "^0.8.1"
+pytest-postgresql = "^5.0.0"
+pytest-freezegun = "^0.4.2"
+pytest-mock = "^3.10.0"
+pytest-flake8 = "^1.1.1"
+flake8 = "4.0.1"
+flake8-quotes = "^3.3.2"
+flake8-commas = "^2.1.0"
+flake8-import-order = "^0.18.2"
+fakeredis = "^2.12.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

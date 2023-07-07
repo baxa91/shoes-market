@@ -1,0 +1,45 @@
+# byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# tests and coverage
+*.pytest_cache
+.coverage
+
+# database & logs
+*.db
+*.sqlite3
+*.log
+*.bak
+*.dat
+*.dir
+*.json
+*.bat
+celerybeat-schedule
+query.sql
+/*.xml
+
+# venv
+core/.env
+.venv/
+venv/
+
+# other
+.DS_Store
+.vscode/
+media/
+static/
+env/
+.idea/
+
+# javascript
+package-lock.json
+
+Pipfile
+tmp.txt
+
+# redis
+*.rdb
+
+*.pid
+poetry.lock
