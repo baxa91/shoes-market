@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from shoes_market import models, settings
+from shoes_market.users import models as user_models
 
 
 # this is the Alembic Config object, which provides
