@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, status
 
-from shoes_market import database, connection
+from shoes_market import database, connection, depends
 
-from . import handlers, repos, services, depends
+from . import handlers, repos, services
 
 
 repo = repos.UserRepoV1(db_session=database.async_session())
