@@ -14,7 +14,7 @@ class User(BaseModel):
     phone_number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password: Mapped[str] = mapped_column(Text())
-    image: Mapped[str] = mapped_column(String(255), nullable=True)
+    image: Mapped[str] = mapped_column(String(500), nullable=True)
     first_name: Mapped[str] = mapped_column(String(255))
     last_name: Mapped[str] = mapped_column(String(255))
     gender: Mapped[constants.GenderType] = mapped_column(Enum(constants.GenderType), nullable=True)
