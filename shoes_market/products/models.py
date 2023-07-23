@@ -8,7 +8,7 @@ from shoes_market import models
 
 class Tag(models.BaseModel):
     __tablename__ = 'tags_tag'
-    name: Mapped[str] = mapped_column(String(255), index=True)
+    name: Mapped[str] = mapped_column(String(255), index=True, unique=True)
 
 
 class Product(models.BaseModel):

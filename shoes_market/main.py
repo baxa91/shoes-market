@@ -2,7 +2,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.responses import ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from shoes_market import users, connection, middleware, settings
+from shoes_market import users, connection, middleware, settings, products
 
 
 app = FastAPI(default_response_class=ORJSONResponse)
@@ -23,6 +23,7 @@ app.add_middleware(middleware.JWTMiddleware, secret_key=settings.SECRET_KEY)
 
 api_router = APIRouter(prefix='/api')
 api_router.include_router(users.router)
+api_router.include_router(products.router)
 
 app.include_router(api_router)
 

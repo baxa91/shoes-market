@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 
-from shoes_market import database, connection, depends
+from shoes_market import database, connection, depends as core_depends
 
 from . import handlers, repos, services
 
@@ -16,7 +16,7 @@ router.add_api_route(
     '/jwt/refresh/',
     handler.refresh_jwt,
     methods=['post'],
-    dependencies=[Depends(depends.is_authenticated)],
+    dependencies=[Depends(core_depends.is_authenticated)],
 )
 router.add_api_route('/', handler.get_users, methods=['get'])
 router.add_api_route(
@@ -25,10 +25,10 @@ router.add_api_route(
 router.add_api_route(
     '/me/', handler.get_user,
     methods=['get'],
-    dependencies=[Depends(depends.is_authenticated)],
+    dependencies=[Depends(core_depends.is_authenticated)],
 )
 router.add_api_route(
     '/me/', handler.update_user,
     methods=['patch'],
-    dependencies=[Depends(depends.is_authenticated)],
+    dependencies=[Depends(core_depends.is_authenticated)],
 )
