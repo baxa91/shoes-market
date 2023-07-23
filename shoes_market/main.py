@@ -1,11 +1,16 @@
+import os
+
 from fastapi import APIRouter, FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from shoes_market import users, connection, middleware, settings, products
 
 
+os.makedirs(settings.MEDIA, exist_ok=True)
 app = FastAPI(default_response_class=ORJSONResponse)
+app.mount("/media", StaticFiles(directory=settings.MEDIA_PATH), name="media")
 origins = [
     "http://localhost",
     "http://localhost:8080",
