@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 
 import jwt
@@ -47,3 +48,12 @@ def verify_password(password: str, hashed_password: str) -> bool:
         return False
 
     return pbkdf2_sha256.verify(password, hashed_password)
+
+
+async def create_mediafile(path: str, name: str, file: bytes) -> str:
+    os.makedirs(f'{settings.MEDIA}{path}', exist_ok=True)
+    file_path = os.path.join(f'{settings.MEDIA}{path}', name)
+    with open(file_path, 'wb') as f:
+        f.write(file)
+
+    return f'{path}{name}'
