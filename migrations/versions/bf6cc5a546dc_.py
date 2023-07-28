@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 8f2edfeea72f
+Revision ID: bf6cc5a546dc
 Revises: 
-Create Date: 2023-07-21 15:20:05.142236
+Create Date: 2023-07-26 16:40:16.603592
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '8f2edfeea72f'
+revision = 'bf6cc5a546dc'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -68,15 +68,15 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ),
+    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_product_image_id'), 'product_image', ['id'], unique=False)
     op.create_table('product_tag',
     sa.Column('product_id', sa.Uuid(), nullable=False),
     sa.Column('tag_id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ),
-    sa.ForeignKeyConstraint(['tag_id'], ['tags_tag.id'], ),
+    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['tag_id'], ['tags_tag.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('product_id', 'tag_id')
     )
     # ### end Alembic commands ###
