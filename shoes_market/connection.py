@@ -1,8 +1,7 @@
-import os
 from typing import NoReturn
 
 from redis import asyncio as aioredis, client, utils
-from shoes_market import exceptions
+from shoes_market import exceptions, settings
 
 
 class Connection:
@@ -11,7 +10,7 @@ class Connection:
 
     @classmethod
     def redis(cls) -> client.Redis | NoReturn:
-        if redis_url := os.getenv('REDIS_URL', None):
+        if redis_url := settings.REDIS_URL:
             cls.__redis = utils.from_url(redis_url)
             return cls.__redis
 
@@ -19,7 +18,7 @@ class Connection:
 
     @classmethod
     def aioredis(cls) -> aioredis.Redis | NoReturn:
-        if redis_url := os.getenv('REDIS_URL', None):
+        if redis_url := settings.REDIS_URL:
             cls.__aioredis = aioredis.from_url(redis_url)
             return cls.__aioredis
 

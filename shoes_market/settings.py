@@ -8,6 +8,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', False)
 
 DATABASE_URL = os.getenv('DATABASE_URL')
+REDIS_URL = os.getenv('REDIS_URL', None)
 
 JWT_ACCESS_TTL = 60 * 60 * 24
 JWT_REFRESH_TTL = 60 * 60 * 24 * 30
