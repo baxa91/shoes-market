@@ -1,11 +1,13 @@
 import base64
+import os
+import uuid
 from typing import NamedTuple, Protocol, NoReturn
 
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, delete, update, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
-from shoes_market import utils
+from shoes_market import utils, pagination, schemas as core_schemas, settings
 
 from . import models, schemas
 
@@ -28,6 +30,20 @@ class ProductRepoInterface(Protocol):
         ...
 
     async def create_product(self, data: schemas.CreateProduct) -> models.Product:
+        ...
+
+    async def get_products(
+            self, page: int, page_size: int, filters
+    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+        ...
+
+    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+        ...
+
+    async def delete_product(self, pk: uuid.UUID) -> NoReturn:
+        ...
+
+    async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         ...
 
 
@@ -92,3 +108,63 @@ class ProductRepoV1(NamedTuple):
             await session.commit()
 
         return product.first()
+
+    async def get_products(
+            self, page: int, page_size: int, filters
+    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+        return await pagination.paginate(
+            self.db_session, select(models.Product).where(filters).order_by(
+                desc(models.Product.created_at)).options(
+                selectinload(models.Product.tags), selectinload(models.Product.images)
+            ),
+            page, page_size, schemas.Product
+        )
+
+    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+        return await models.Product.get(self.db_session, filters, *['tags', 'images'])
+
+    async def delete_product(self, pk: uuid.UUID) -> NoReturn:
+        async with self.db_session as session, session.begin():
+            rows = await session.scalars(
+                select(models.ProductImage).where(models.ProductImage.product_id == pk)
+            )
+            row = rows.all()
+            for image in row:
+                os.remove(f'{settings.MEDIA}{image.image}')
+
+            query = delete(models.Product).where(models.Product.id == pk)
+            await session.execute(query)
+            await session.commit()
+
+    async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
+        product_dict = data.model_dump(exclude_unset=True)
+        async with self.db_session as session, session.begin():
+            if product_dict.get('tags'):
+                tags = product_dict.pop('tags')
+                tag_list = []
+                await session.execute(
+                    delete(models.ProductTag).where(models.ProductTag.c.product_id == pk)
+                )
+                for tag in tags:
+                    tag_list.append({
+                        'product_id': pk,
+                        'tag_id': tag
+                    })
+
+                await session.execute(insert(models.ProductTag).values(tag_list))
+
+            if product_dict:
+                query = update(models.Product).where(
+                    models.Product.id == pk).values(**product_dict)
+                await session.execute(query)
+
+            product = await session.scalars(
+                select(models.Product).options(
+                    selectinload(models.Product.tags), selectinload(models.Product.images)
+                ).filter(
+                    models.Product.id == pk)
+            )
+            session.expunge_all()
+            await session.commit()
+
+        return product.one_or_none()
