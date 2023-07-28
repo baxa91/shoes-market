@@ -4,7 +4,7 @@ from typing import Self, NoReturn
 
 from sqlalchemy import DateTime, insert, select, update, delete
 from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, selectinload
 
 from shoes_market import exceptions
 
@@ -23,9 +23,15 @@ class Base(AsyncAttrs, DeclarativeBase):
             return row
 
     @classmethod
-    async def get(cls, db_session: AsyncSession, filters: tuple = ()) -> Self:
+    async def get(cls, db_session: AsyncSession, filters: tuple = (), *args) -> Self:
         async with db_session as session:
-            rows = await session.scalars(select(cls).filter(*filters))
+            if args:
+                rows = await session.scalars(select(cls).options(
+                    *[selectinload(getattr(cls, join)) for join in args]
+                ).filter(*filters))
+            else:
+                rows = await session.scalars(select(cls).filter(*filters))
+
             row = rows.one_or_none()
 
         if not row:
