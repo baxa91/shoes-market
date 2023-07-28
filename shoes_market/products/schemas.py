@@ -1,10 +1,12 @@
 import uuid
+import datetime as dt
+from urllib.parse import urljoin
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 
 from sqlalchemy import exists
 
-from shoes_market import database
+from shoes_market import database, settings, constants
 from . import exceptions, models
 
 
@@ -36,6 +38,13 @@ class ProductImage(BaseModel):
     is_base: bool = False
     image: str
 
+    @field_serializer('image')
+    def serialize_image(self, image: str):
+        return urljoin(
+            f"{constants.REQUEST.get('scheme')}://"
+            f"{constants.REQUEST.get('host')}/{settings.MEDIA_PATH}", image
+        )
+
 
 class CreateProductImage(BaseModel):
 
@@ -63,6 +72,7 @@ class Product(BaseModel):
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
     images: list[ProductImage] = []
+    created_at: dt.datetime
 
 
 class CreateProduct(BaseModel):
@@ -106,3 +116,29 @@ class CreateProduct(BaseModel):
             raise exceptions.ImageBaseException
 
         return images
+
+
+class UpdateProduct(BaseModel):
+    title: str | None = None
+    price: int | None = None
+    tags: list[uuid.UUID] | None = None
+    currency: str | None = Field(json_schema_extra={'example': 'KZT'}, default=None)
+    description: str | None = None
+
+    @field_validator('price')
+    def validate_price(cls, price: int):
+        if price <= 0:
+            raise exceptions.PriceNegativeException
+
+        return price
+
+    @field_validator('tags')
+    def validate_tags(cls, tags: list):
+        for tag in tags:
+            query = exists().where(models.Tag.id == tag)
+
+            with database.session() as session:
+                if not session.query(query).scalar():
+                    raise exceptions.DoesNotExistsException
+
+        return tags
