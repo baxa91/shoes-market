@@ -1,6 +1,7 @@
 import datetime
 import os
 import random
+import re
 
 import jwt
 
@@ -52,8 +53,25 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 async def create_mediafile(path: str, name: str, file: bytes) -> str:
     os.makedirs(f'{settings.MEDIA}{path}', exist_ok=True)
-    file_path = os.path.join(f'{settings.MEDIA}{path}', name)
+    file_name = await get_unique_name(path, name)
+    file_path = os.path.join(f'{settings.MEDIA}{path}', file_name)
     with open(file_path, 'wb') as f:
         f.write(file)
 
-    return f'{path}{name}'
+    return f'{path}{file_name}'
+
+
+async def get_unique_name(path: str, name: str, count=1) -> str:
+    file_path = os.path.join(f'{settings.MEDIA}{path}', name)
+    if os.path.exists(file_path):
+        count = count + 1
+        split_name = name.rsplit('.', 1)
+        match = re.search(r'\((\d+)\)', split_name[0])
+        if match:
+            new_name = f'{split_name[0].replace(match.group(1), str(count))}.{split_name[1]}'
+        else:
+            new_name = f'{split_name[0]}({count}).{split_name[1]}'
+
+        return await get_unique_name(path, new_name, count)
+    else:
+        return name
