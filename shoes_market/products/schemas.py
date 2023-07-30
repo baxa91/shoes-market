@@ -2,9 +2,12 @@ import uuid
 import datetime as dt
 from urllib.parse import urljoin
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
+from pydantic import (
+    BaseModel, Field, field_validator,
+    ConfigDict, field_serializer, model_validator
+)
 
-from sqlalchemy import exists
+from sqlalchemy import exists, select, func
 
 from shoes_market import database, settings, constants
 from . import exceptions, models
@@ -142,3 +145,61 @@ class UpdateProduct(BaseModel):
                     raise exceptions.DoesNotExistsException
 
         return tags
+
+
+class CreateProductImageDetail(CreateProductImage):
+    product_id: uuid.UUID
+
+    @field_validator('product_id')
+    def validate_product_id(cls, product_id: uuid.UUID):
+        query = exists().where(models.Product.id == product_id)
+        with database.session() as session:
+            if not session.query(query).scalar():
+                raise exceptions.DoesNotExistsException
+
+            rows = select(models.ProductImage).where(models.ProductImage.product_id == product_id)
+            count = session.scalar(select(func.count()).select_from(rows))
+            if count > 7:
+                raise exceptions.ImageCountException
+
+        return product_id
+
+    @model_validator(mode='after')
+    def validate_is_base(self):
+        if self.is_base:
+            query = exists().where(
+                models.ProductImage.product_id == self.product_id,
+                models.ProductImage.is_base == self.is_base
+            )
+            with database.session() as session:
+                if session.query(query).scalar():
+                    raise exceptions.ImageBaseException
+
+        return self
+
+
+class UpdateProductImage(BaseModel):
+    product_id: uuid.UUID
+    is_base: bool
+
+    @field_validator('product_id')
+    def validate_product_id(cls, product_id: uuid.UUID):
+        query = exists().where(models.Product.id == product_id)
+        with database.session() as session:
+            if not session.query(query).scalar():
+                raise exceptions.DoesNotExistsException
+
+        return product_id
+
+    @model_validator(mode='after')
+    def validate_is_base(self):
+        if self.is_base:
+            query = exists().where(
+                models.ProductImage.product_id == self.product_id,
+                models.ProductImage.is_base == self.is_base
+            )
+            with database.session() as session:
+                if session.query(query).scalar():
+                    raise exceptions.ImageBaseException
+
+        return self
