@@ -66,3 +66,20 @@ class ProductHandler(NamedTuple):
             'scheme': request.url.scheme
         })
         return await self.service.update_product(pk, data)
+
+    async def create_product_image(
+            self, request: Request, data: schemas.CreateProductImageDetail
+    ) -> schemas.ProductImage:
+        core_const.REQUEST.update({
+            'host': request.headers.get("host"),
+            'scheme': request.url.scheme
+        })
+        return await self.service.create_product_image(data)
+
+    async def update_product_image(self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> dict:
+        await self.service.update_product_image(pk, data)
+        return {'success': constants.UPDATE_PRODUCT_IMAGE}
+
+    async def delete_product_image(self, pk: uuid.UUID) -> dict:
+        await self.service.delete_product_image(filters=(models.ProductImage.id == pk,))
+        return {'success': constants.DELETE_PRODUCT_IMAGE}

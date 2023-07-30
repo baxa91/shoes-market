@@ -46,6 +46,16 @@ class ProductRepoInterface(Protocol):
     async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         ...
 
+    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
+        ...
+
+    async def update_product_image(
+            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+        ...
+
+    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+        ...
+
 
 class ProductRepoV1(NamedTuple):
     db_session: AsyncSession
@@ -168,3 +178,28 @@ class ProductRepoV1(NamedTuple):
             await session.commit()
 
         return product.one_or_none()
+
+    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
+        async with self.db_session as session, session.begin():
+            image_dict = {'product_id': data.product_id, 'is_base': data.is_base}
+            file = base64.b64decode(data.image)
+            file_path = await utils.create_mediafile('products/', data.filename, file)
+            image_dict['image'] = file_path
+            rows = await session.scalars(
+                insert(models.ProductImage).returning(models.ProductImage).values(**image_dict)
+            )
+            row = rows.one()
+            session.expunge_all()
+            await session.commit()
+
+        return row
+
+    async def update_product_image(
+            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+        data_dict = data.model_dump()
+        del data_dict['product_id']
+        filters = (models.ProductImage.id == pk,)
+        await models.ProductImage.update(self.db_session, filters, data_dict)
+
+    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+        await models.ProductImage.delete(self.db_session, filters)

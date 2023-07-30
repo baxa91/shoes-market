@@ -47,6 +47,16 @@ class ProductServiceInterface(Protocol):
     async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         ...
 
+    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
+        ...
+
+    async def update_product_image(
+            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+        ...
+
+    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+        ...
+
 
 class ProductServiceV1(NamedTuple):
     repo: repos.ProductRepoInterface
@@ -101,3 +111,13 @@ class ProductServiceV1(NamedTuple):
 
     async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         return await self.repo.update_product(pk, data)
+
+    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
+        return await self.repo.create_product_image(data)
+
+    async def update_product_image(
+            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+        await self.repo.update_product_image(pk, data)
+
+    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+        await self.repo.delete_product_image(filters)
