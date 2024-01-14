@@ -1,12 +1,15 @@
 import datetime
+import io
 import os
 import random
-import re
+import uuid
 
 import jwt
+from PIL import Image
 
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from shoes_market import settings, schemas
+from shoes_market.products import exceptions
 
 
 def generate_code(k: int = 6) -> str:
@@ -51,27 +54,16 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return pbkdf2_sha256.verify(password, hashed_password)
 
 
-async def create_mediafile(path: str, name: str, file: bytes) -> str:
+async def create_mediafile(path: str, file: bytes) -> str | None:
+    if not file:
+        return None
+
+    file_name = f'{str(uuid.uuid4())}.webp'
     os.makedirs(f'{settings.MEDIA}{path}', exist_ok=True)
-    file_name = await get_unique_name(path, name)
-    file_path = os.path.join(f'{settings.MEDIA}{path}', file_name)
-    with open(file_path, 'wb') as f:
-        f.write(file)
-
-    return f'{path}{file_name}'
-
-
-async def get_unique_name(path: str, name: str, count=1) -> str:
-    file_path = os.path.join(f'{settings.MEDIA}{path}', name)
-    if os.path.exists(file_path):
-        count = count + 1
-        split_name = name.rsplit('.', 1)
-        match = re.search(r'\((\d+)\)', split_name[0])
-        if match:
-            new_name = f'{split_name[0].replace(match.group(1), str(count))}.{split_name[1]}'
-        else:
-            new_name = f'{split_name[0]}({count}).{split_name[1]}'
-
-        return await get_unique_name(path, new_name, count)
-    else:
-        return name
+    file_path = f'{path}{file_name}'
+    try:
+        image = Image.open(io.BytesIO(file))
+        image.save(f'{settings.MEDIA}{file_path}', format='WEBP')
+        return file_path
+    except Exception:
+        raise exceptions.ImageTypeException

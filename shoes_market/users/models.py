@@ -1,7 +1,7 @@
 import datetime as dt
 
-from sqlalchemy import ARRAY, DateTime, Enum, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, Enum, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shoes_market import constants
 from shoes_market.models import BaseModel
@@ -23,3 +23,4 @@ class User(BaseModel):
     is_staff: Mapped[bool] = mapped_column(default=False)
     is_active: Mapped[bool] = mapped_column(default=False)
     last_login: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    favorites: Mapped['Favorite'] = relationship(back_populates="user", cascade='all')

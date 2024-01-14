@@ -3,7 +3,7 @@ import os
 import uuid
 from typing import NamedTuple, Protocol, NoReturn
 
-from sqlalchemy import insert, select, delete, update, desc
+from sqlalchemy import insert, select, delete, update, desc, asc, case, exists, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -33,11 +33,12 @@ class ProductRepoInterface(Protocol):
         ...
 
     async def get_products(
-            self, page: int, page_size: int, filters
+            self, page: int, page_size: int, filters1,
+            order_by: bool | None, user_id: uuid.UUID = None, like: bool = False
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
         ...
 
-    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
         ...
 
     async def delete_product(self, pk: uuid.UUID) -> NoReturn:
@@ -85,8 +86,11 @@ class ProductRepoV1(NamedTuple):
     async def create_product(self, data: schemas.CreateProduct) -> models.Product:
         data_dict = data.model_dump()
         tag_dict = data_dict.pop('tags')
-        images_list = data_dict.pop('images')
+        main_image = data_dict.pop('main_image')
         async with self.db_session as session:
+            file = base64.b64decode(main_image)
+            file_path = await utils.create_mediafile('products/', file)
+            data_dict['main_image'] = file_path
             rows = await session.scalars(
                 insert(models.Product).returning(models.Product).values(**data_dict)
             )
@@ -99,18 +103,9 @@ class ProductRepoV1(NamedTuple):
                 })
 
             await session.execute(insert(models.ProductTag).values(tag_list))
-            product_images = []
-            for image in images_list:
-                image_dict = {'product_id': product.id, 'is_base': image['is_base']}
-                file = base64.b64decode(image['image'])
-                file_path = await utils.create_mediafile('products/', image['filename'], file)
-                image_dict['image'] = file_path
-                product_images.append(image_dict)
-
-            await session.execute(insert(models.ProductImage).values(product_images))
             product = await session.scalars(
                 select(models.Product).options(
-                    joinedload(models.Product.tags), joinedload(models.Product.images)
+                    joinedload(models.Product.tags)
                 ).filter(
                     models.Product.id == product.id)
             )
@@ -120,17 +115,36 @@ class ProductRepoV1(NamedTuple):
         return product.first()
 
     async def get_products(
-            self, page: int, page_size: int, filters
+            self, page: int, page_size: int, filters,
+            order_by: bool | None, user_id: uuid.UUID = None, like: bool = False
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
+        def base_query():
+            query = select(models.Product).where(filters).options(
+                selectinload(models.Product.tags), selectinload(models.Product.images))
+            if user_id:
+                query = query.add_columns(case((and_(
+                    models.Favorite.client_id == user_id,
+                    models.Favorite.product_id == models.Product.id), True), else_=False
+                ).label('is_favorite'))
+                if like:
+                    query = query.join(models.Favorite,
+                                       models.Favorite.product_id == models.Product.id)
+            return query
+
+        query = base_query()
+
+        if order_by is not None:
+            sort_order = desc(models.Product.price) if order_by else asc(models.Product.price)
+            query = query.order_by(sort_order, desc(models.Product.created_at))
+        else:
+            query = query.order_by(desc(models.Product.created_at))
+
         return await pagination.paginate(
-            self.db_session, select(models.Product).where(filters).order_by(
-                desc(models.Product.created_at)).options(
-                selectinload(models.Product.tags), selectinload(models.Product.images)
-            ),
-            page, page_size, schemas.Product
+            self.db_session, query,
+            page, page_size, schemas.Product, *['is_favorite'] if user_id else []
         )
 
-    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
         return await models.Product.get(self.db_session, filters, *['tags', 'images'])
 
     async def delete_product(self, pk: uuid.UUID) -> NoReturn:
@@ -183,7 +197,7 @@ class ProductRepoV1(NamedTuple):
         async with self.db_session as session, session.begin():
             image_dict = {'product_id': data.product_id, 'is_base': data.is_base}
             file = base64.b64decode(data.image)
-            file_path = await utils.create_mediafile('products/', data.filename, file)
+            file_path = await utils.create_mediafile('products/', file)
             image_dict['image'] = file_path
             rows = await session.scalars(
                 insert(models.ProductImage).returning(models.ProductImage).values(**image_dict)

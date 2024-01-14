@@ -9,6 +9,7 @@ DEBUG = os.getenv('DEBUG', False)
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 REDIS_URL = os.getenv('REDIS_URL', None)
+MEDIA_URL = os.getenv('MEDIA_URL', 'http://0.0.0.0:8000/media/')
 
 JWT_ACCESS_TTL = 60 * 60 * 24
 JWT_REFRESH_TTL = 60 * 60 * 24 * 30

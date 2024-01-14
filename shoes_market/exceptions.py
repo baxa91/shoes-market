@@ -31,3 +31,13 @@ class NotFound(HTTPException):
         headers: dict | None = None,
     ) -> None:
         super().__init__(status_code=status_code, detail=detail, headers=headers)
+
+
+class PermissionDenied(HTTPException):
+
+    def __init__(
+        self, status_code: int = status.HTTP_403_FORBIDDEN,
+        detail: Any = 'Permission denied',
+        headers: dict | None = None,
+    ) -> None:
+        super().__init__(status_code=status_code, detail=detail, headers=headers)

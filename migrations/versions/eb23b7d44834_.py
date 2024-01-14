@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: bf6cc5a546dc
+Revision ID: eb23b7d44834
 Revises: 
-Create Date: 2023-07-26 16:40:16.603592
+Create Date: 2024-01-14 14:42:59.692056
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'bf6cc5a546dc'
+revision = 'eb23b7d44834'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,6 +23,8 @@ def upgrade() -> None:
     sa.Column('price', sa.Integer(), nullable=False),
     sa.Column('currency', sa.String(length=4), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('main_image', sa.Text(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -61,10 +63,19 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_user_id'), 'users_user', ['id'], unique=False)
     op.create_index(op.f('ix_users_user_nickname'), 'users_user', ['nickname'], unique=False)
     op.create_index(op.f('ix_users_user_phone_number'), 'users_user', ['phone_number'], unique=True)
+    op.create_table('favorite_products',
+    sa.Column('client_id', sa.Uuid(), nullable=False),
+    sa.Column('product_id', sa.Uuid(), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['client_id'], ['users_user.id'], ),
+    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ),
+    sa.PrimaryKeyConstraint('client_id', 'product_id', 'id'),
+    sa.UniqueConstraint('client_id', 'product_id', name='_client_product_uc')
+    )
+    op.create_index(op.f('ix_favorite_products_id'), 'favorite_products', ['id'], unique=False)
     op.create_table('product_image',
     sa.Column('product_id', sa.Uuid(), nullable=False),
     sa.Column('image', sa.Text(), nullable=False),
-    sa.Column('is_base', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -75,8 +86,8 @@ def upgrade() -> None:
     op.create_table('product_tag',
     sa.Column('product_id', sa.Uuid(), nullable=False),
     sa.Column('tag_id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['tag_id'], ['tags_tag.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ),
+    sa.ForeignKeyConstraint(['tag_id'], ['tags_tag.id'], ),
     sa.PrimaryKeyConstraint('product_id', 'tag_id')
     )
     # ### end Alembic commands ###
@@ -87,6 +98,8 @@ def downgrade() -> None:
     op.drop_table('product_tag')
     op.drop_index(op.f('ix_product_image_id'), table_name='product_image')
     op.drop_table('product_image')
+    op.drop_index(op.f('ix_favorite_products_id'), table_name='favorite_products')
+    op.drop_table('favorite_products')
     op.drop_index(op.f('ix_users_user_phone_number'), table_name='users_user')
     op.drop_index(op.f('ix_users_user_nickname'), table_name='users_user')
     op.drop_index(op.f('ix_users_user_id'), table_name='users_user')

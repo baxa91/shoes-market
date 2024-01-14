@@ -13,3 +13,8 @@ class PaginatedParams(BaseModel):
 async def is_authenticated(request: Request):
     if not request.state.is_authenticated:
         raise exceptions.Unauthorized
+
+
+async def is_admin(request: Request):
+    if not request.state.user['is_staff']:
+        raise exceptions.PermissionDenied

@@ -3,7 +3,7 @@ from typing import NamedTuple, Annotated
 
 from fastapi import Request, Depends, Query
 
-from shoes_market import schemas as core_schemas, constants as core_const
+from shoes_market import schemas as core_schemas
 
 from . import models, services, schemas, depends, constants
 
@@ -28,30 +28,20 @@ class ProductHandler(NamedTuple):
         return {'success': constants.DELETE_TAG}
 
     async def create_product(
-            self, request: Request, data: schemas.CreateProduct) -> models.Product:
-        core_const.REQUEST.update({
-            'host': request.headers.get("host"),
-            'scheme': request.url.scheme
-        })
+            self, data: schemas.CreateProduct) -> models.Product:
         return await self.service.create_product(data=data)
 
     async def get_products(
-            self,
-            request: Request,
+            self, request: Request,
             filters: Annotated[depends.FilterProduct, Depends()],
             tags: Annotated[list[str] | None, Query()] = None
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
-        core_const.REQUEST.update({
-            'host': request.headers.get("host"),
-            'scheme': request.url.scheme
-        })
+        if request.state.is_authenticated:
+            return await self.service.get_products(filters, tags, request.state.user.get('id'))
+
         return await self.service.get_products(filters, tags)
 
-    async def get_product(self, request: Request, pk: uuid.UUID) -> schemas.Product:
-        core_const.REQUEST.update({
-            'host': request.headers.get("host"),
-            'scheme': request.url.scheme
-        })
+    async def get_product(self, pk: uuid.UUID) -> schemas.DetailProduct:
         return await self.service.get_product(filters=(models.Product.id == pk,))
 
     async def delete_product(self, pk: uuid.UUID) -> dict:
@@ -59,21 +49,13 @@ class ProductHandler(NamedTuple):
         return {'success': constants.DELETE_PRODUCT}
 
     async def update_product(
-            self, request: Request, pk: uuid.UUID, data: schemas.UpdateProduct
+            self, pk: uuid.UUID, data: schemas.UpdateProduct
     ) -> schemas.Product:
-        core_const.REQUEST.update({
-            'host': request.headers.get("host"),
-            'scheme': request.url.scheme
-        })
         return await self.service.update_product(pk, data)
 
     async def create_product_image(
-            self, request: Request, data: schemas.CreateProductImageDetail
+            self, data: schemas.CreateProductImageDetail
     ) -> schemas.ProductImage:
-        core_const.REQUEST.update({
-            'host': request.headers.get("host"),
-            'scheme': request.url.scheme
-        })
         return await self.service.create_product_image(data)
 
     async def update_product_image(self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> dict:

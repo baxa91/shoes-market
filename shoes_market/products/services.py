@@ -5,7 +5,7 @@ from typing import NamedTuple, Protocol, NoReturn, Annotated
 
 from redis import asyncio as aioredis
 from fastapi import Depends, Query
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, and_
 
 from . import models, repos, schemas, depends
 from shoes_market import schemas as core_schemas
@@ -34,11 +34,11 @@ class ProductServiceInterface(Protocol):
     async def get_products(
             self,
             filters: Annotated[depends.FilterProduct, Depends()],
-            tags: Annotated[list[str] | None, Query()] = None
+            tags: Annotated[list[str] | None, Query()] = None, user_id: uuid.UUID = None
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
         ...
 
-    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
         ...
 
     async def delete_product(self, pk: uuid.UUID) -> NoReturn:
@@ -83,27 +83,39 @@ class ProductServiceV1(NamedTuple):
     async def get_products(
             self,
             filters: Annotated[depends.FilterProduct, Depends()],
-            tags: Annotated[list[str] | None, Query()] = None
+            tags: Annotated[list[str] | None, Query()] = None, user_id: uuid.UUID = None
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
-        key = f'{filters.model_dump()}{tags}'
-        cache = await self.redis.get(key)
-        if cache:
-            return json.loads(cache)
-
+        filters_list = [and_(models.Product.is_active == True)]
         tag_list = [models.Product.tags.any(models.Tag.id == tag) for tag in tags] if tags else []
-
         prices = [
             models.Product.price >= filters.price_before if filters.price_before else None,
             models.Product.price <= filters.price_after if filters.price_after else None
         ]
         prices = [price for price in prices if price is not None]
+        if tag_list:
+            filters_list.append(or_(*tag_list))
+        if prices:
+            filters_list.append(and_(*prices))
 
-        filters_orm = or_(*tag_list) if not prices else and_(or_(*tag_list), *prices)
-        products = await self.repo.get_products(filters.page, filters.page_size, filters_orm)
-        await self.redis.setex(key, 500, products.model_dump_json())
+        order_by = filters.creasing if filters.creasing is not None else None
+        if user_id:
+            if filters.favorites is True:
+                filters_list.append(and_(models.Favorite.client_id == user_id))
+                products = await self.repo.get_products(
+                    filters.page, filters.page_size, and_(*filters_list), order_by, user_id,
+                    like=True
+                )
+            else:
+                products = await self.repo.get_products(
+                    filters.page, filters.page_size, and_(*filters_list), order_by, user_id
+                )
+        else:
+            products = await self.repo.get_products(
+                filters.page, filters.page_size, and_(*filters_list), order_by
+            )
         return products
 
-    async def get_product(self, filters: tuple = ()) -> schemas.Product:
+    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
         return await self.repo.get_product(filters)
 
     async def delete_product(self, pk: uuid.UUID) -> NoReturn:

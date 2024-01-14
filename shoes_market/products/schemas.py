@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 from pydantic import (
     BaseModel, Field, field_validator,
-    ConfigDict, field_serializer, model_validator
+    ConfigDict, field_serializer, model_validator, Extra
 )
 
 from sqlalchemy import exists, select, func
@@ -38,31 +38,31 @@ class ProductImage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    is_base: bool = False
+    product_id: uuid.UUID
     image: str
 
     @field_serializer('image')
     def serialize_image(self, image: str):
-        return urljoin(
-            f"{constants.REQUEST.get('scheme')}://"
-            f"{constants.REQUEST.get('host')}/{settings.MEDIA_PATH}", image
-        )
+        if not image:
+            return None
+
+        return urljoin(settings.MEDIA_URL, image)
+
+
+class MiniProductImage(BaseModel):
+    id: uuid.UUID
+    image: str
+
+    @field_serializer('image')
+    def serialize_image(self, image: str):
+        if not image:
+            return None
+
+        return urljoin(settings.MEDIA_URL, image)
 
 
 class CreateProductImage(BaseModel):
-
-    is_base: bool = False
-    filename: str
-    filetype: str
     image: bytes
-
-    @field_validator('filetype')
-    def validate_filetype(cls, filetype: str):
-        allowed_filetypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-        if filetype not in allowed_filetypes:
-            raise exceptions.ImageTypeException
-
-        return filetype
 
 
 class Product(BaseModel):
@@ -74,8 +74,35 @@ class Product(BaseModel):
     price: int
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
-    images: list[ProductImage] = []
+    main_image: str
     created_at: dt.datetime
+    is_favorite: bool = False
+
+    @field_serializer('main_image')
+    def serialize_image(self, main_image: str):
+        if not main_image:
+            return None
+
+        return urljoin(settings.MEDIA_URL, main_image)
+
+
+class DetailProduct(BaseModel):
+    id: uuid.UUID
+    title: str
+    tags: list[Tag] = []
+    price: int
+    currency: str = Field(json_schema_extra={'example': 'KZT'})
+    description: str
+    main_image: str
+    images: list[MiniProductImage]
+    created_at: dt.datetime
+
+    @field_serializer('main_image')
+    def serialize_image(self, main_image: str):
+        if not main_image:
+            return None
+
+        return urljoin(settings.MEDIA_URL, main_image)
 
 
 class CreateProduct(BaseModel):
@@ -84,7 +111,7 @@ class CreateProduct(BaseModel):
     tags: list[uuid.UUID]
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
-    images: list[CreateProductImage]
+    main_image: bytes
 
     @field_validator('price')
     def validate_price(cls, price: int):
@@ -104,22 +131,6 @@ class CreateProduct(BaseModel):
 
         return tags
 
-    @field_validator('images')
-    def validate_images(cls, images: list):
-        if len(images) > 7:
-            raise exceptions.ImageCountException
-
-        count = []
-        for image in images:
-            image = image.model_dump()
-            if image['is_base']:
-                count.append(image)
-
-        if len(count) > 1:
-            raise exceptions.ImageBaseException
-
-        return images
-
 
 class UpdateProduct(BaseModel):
     title: str | None = None
@@ -127,6 +138,7 @@ class UpdateProduct(BaseModel):
     tags: list[uuid.UUID] | None = None
     currency: str | None = Field(json_schema_extra={'example': 'KZT'}, default=None)
     description: str | None = None
+    is_active: bool | None = None
 
     @field_validator('price')
     def validate_price(cls, price: int):
@@ -168,8 +180,7 @@ class CreateProductImageDetail(CreateProductImage):
     def validate_is_base(self):
         if self.is_base:
             query = exists().where(
-                models.ProductImage.product_id == self.product_id,
-                models.ProductImage.is_base == self.is_base
+                models.ProductImage.product_id == self.product_id
             )
             with database.session() as session:
                 if session.query(query).scalar():
@@ -180,7 +191,6 @@ class CreateProductImageDetail(CreateProductImage):
 
 class UpdateProductImage(BaseModel):
     product_id: uuid.UUID
-    is_base: bool
 
     @field_validator('product_id')
     def validate_product_id(cls, product_id: uuid.UUID):
@@ -195,8 +205,7 @@ class UpdateProductImage(BaseModel):
     def validate_is_base(self):
         if self.is_base:
             query = exists().where(
-                models.ProductImage.product_id == self.product_id,
-                models.ProductImage.is_base == self.is_base
+                models.ProductImage.product_id == self.product_id
             )
             with database.session() as session:
                 if session.query(query).scalar():

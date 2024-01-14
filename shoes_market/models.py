@@ -12,6 +12,17 @@ from shoes_market import exceptions
 class Base(AsyncAttrs, DeclarativeBase):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, index=True, default=uuid.uuid4)
 
+    repr_cols_num = 3
+    repr_cols = tuple()
+
+    def __repr__(self):
+        cols = []
+        for idx, col in enumerate(self.__table__.columns.keys()):
+            if col in self.repr_cols or idx < self.repr_cols_num:
+                cols.append(f"{col}={getattr(self, col)}")
+
+        return f"<{self.__class__.__name__} {', '.join(cols)}>"
+
     @classmethod
     async def create(cls, db_session: AsyncSession, data: dict) -> Self:
         async with db_session as session, session.begin():
