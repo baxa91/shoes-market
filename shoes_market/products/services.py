@@ -85,35 +85,20 @@ class ProductServiceV1(NamedTuple):
             filters: Annotated[depends.FilterProduct, Depends()],
             tags: Annotated[list[str] | None, Query()] = None, user_id: uuid.UUID = None
     ) -> core_schemas.PaginatedResponse[schemas.Product]:
-        filters_list = [and_(models.Product.is_active == True)]
-        tag_list = [models.Product.tags.any(models.Tag.id == tag) for tag in tags] if tags else []
-        prices = [
-            models.Product.price >= filters.price_before if filters.price_before else None,
-            models.Product.price <= filters.price_after if filters.price_after else None
-        ]
-        prices = [price for price in prices if price is not None]
-        if tag_list:
-            filters_list.append(or_(*tag_list))
-        if prices:
-            filters_list.append(and_(*prices))
+        filters_list = [models.Product.is_active == True]
+        if tags:
+            filters_list.extend(models.Product.tags.any(models.Tag.id == tag) for tag in tags)
+        if filters.price_before:
+            filters_list.append(models.Product.price >= filters.price_before)
+        if filters.price_after:
+            filters_list.append(models.Product.price <= filters.price_after)
 
         order_by = filters.creasing if filters.creasing is not None else None
-        if user_id:
-            if filters.favorites is True:
-                filters_list.append(and_(models.Favorite.client_id == user_id))
-                products = await self.repo.get_products(
-                    filters.page, filters.page_size, and_(*filters_list), order_by, user_id,
-                    like=True
-                )
-            else:
-                products = await self.repo.get_products(
-                    filters.page, filters.page_size, and_(*filters_list), order_by, user_id
-                )
-        else:
-            products = await self.repo.get_products(
-                filters.page, filters.page_size, and_(*filters_list), order_by
-            )
-        return products
+        like = filters.favorites is True and user_id is not None
+
+        return await self.repo.get_products(
+            filters.page, filters.page_size, and_(*filters_list), order_by, user_id, like=like
+        )
 
     async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
         return await self.repo.get_product(filters)
