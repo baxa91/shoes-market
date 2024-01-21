@@ -6,13 +6,13 @@ from shoes_market import schemas
 
 class PageNumberPagination:
     def __init__(
-            self, session: AsyncSession, query: Select, page: int, page_size: int, schema, *args):
+            self, session: AsyncSession, query: Select, page: int, page_size: int, schema, **kwargs):
         self.session = session
         self.query = query
         self.page = page
         self.page_size = page_size
         self.schema = schema
-        self.extra_fields = args
+        self.context = kwargs
 
     async def get_response(self) -> schemas.PaginatedResponse:
         limit = self.page_size
@@ -21,24 +21,16 @@ class PageNumberPagination:
         query = self.query.limit(limit).offset(offset)
         count = await self._get_total_count()
         pages = self._get_number_of_pages(count)
-        if not self.extra_fields:
-            results = [
-                self.schema.model_validate(i).model_dump()
-                for i in await self.session.scalars(query)] \
-                if self.schema else [i for i in await self.session.scalars(query)]
-        else:
-            res = await self.session.execute(query)
-            results = []
-            for row in res:
-                model_data = row[0].__dict__
-                model_data.update({field: getattr(row, field) for field in self.extra_fields})
-                model_obj = self.schema.model_validate(model_data, from_attributes=True)
-                results.append(model_obj.model_dump())
 
         result = {
             'count': count,
             'pages': pages,
-            'results': results
+            'results': [
+                self.schema.model_validate(
+                    i, context=self.context if self.context else None, from_attributes=True
+                ).model_dump()
+                for i in await self.session.scalars(query)]
+            if self.schema else [i for i in await self.session.scalars(query)]
         }
         return schemas.PaginatedResponse(**result)
 
@@ -53,8 +45,8 @@ class PageNumberPagination:
 
 
 async def paginate(
-        db_session, query: Select, page: int, page_size: int, schema=None, *args
+        db_session, query: Select, page: int, page_size: int, schema=None, **kwargs
 ) -> schemas.PaginatedResponse:
     async with db_session as session:
-        paginator = PageNumberPagination(session, query, page, page_size, schema, *args)
+        paginator = PageNumberPagination(session, query, page, page_size, schema, **kwargs)
         return await paginator.get_response()

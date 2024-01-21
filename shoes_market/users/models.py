@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shoes_market import constants
 from shoes_market.models import BaseModel
+from shoes_market.products.models import Favorite
 
 
 class User(BaseModel):
@@ -23,4 +24,5 @@ class User(BaseModel):
     is_staff: Mapped[bool] = mapped_column(default=False)
     is_active: Mapped[bool] = mapped_column(default=False)
     last_login: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    favorites: Mapped['Favorite'] = relationship(back_populates="user", cascade='all')
+    favorites = relationship('Product', secondary=Favorite, back_populates='favorites')
+    orders = relationship('Order', back_populates='client', cascade='all, delete-orphan')

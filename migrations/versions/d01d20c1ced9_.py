@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: eb23b7d44834
+Revision ID: d01d20c1ced9
 Revises: 
-Create Date: 2024-01-14 14:42:59.692056
+Create Date: 2024-01-17 15:17:13.854683
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'eb23b7d44834'
+revision = 'd01d20c1ced9'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -64,15 +64,12 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_user_nickname'), 'users_user', ['nickname'], unique=False)
     op.create_index(op.f('ix_users_user_phone_number'), 'users_user', ['phone_number'], unique=True)
     op.create_table('favorite_products',
-    sa.Column('client_id', sa.Uuid(), nullable=False),
     sa.Column('product_id', sa.Uuid(), nullable=False),
-    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('client_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['client_id'], ['users_user.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['products_product.id'], ),
-    sa.PrimaryKeyConstraint('client_id', 'product_id', 'id'),
-    sa.UniqueConstraint('client_id', 'product_id', name='_client_product_uc')
+    sa.PrimaryKeyConstraint('product_id', 'client_id')
     )
-    op.create_index(op.f('ix_favorite_products_id'), 'favorite_products', ['id'], unique=False)
     op.create_table('product_image',
     sa.Column('product_id', sa.Uuid(), nullable=False),
     sa.Column('image', sa.Text(), nullable=False),
@@ -98,7 +95,6 @@ def downgrade() -> None:
     op.drop_table('product_tag')
     op.drop_index(op.f('ix_product_image_id'), table_name='product_image')
     op.drop_table('product_image')
-    op.drop_index(op.f('ix_favorite_products_id'), table_name='favorite_products')
     op.drop_table('favorite_products')
     op.drop_index(op.f('ix_users_user_phone_number'), table_name='users_user')
     op.drop_index(op.f('ix_users_user_nickname'), table_name='users_user')

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
-from shoes_market import database, connection, depends as core_depends
+from shoes_market import connection, depends as core_depends
 
 from . import handlers, repos, services, schemas
 
 
-repo = repos.ProductRepoV1(db_session=database.async_session())
+repo = repos.ProductRepoV1()
 service = services.ProductServiceV1(repo=repo, redis=connection.Connection.aioredis())
 handler = handlers.ProductHandler(service=service)
 router = APIRouter(prefix='/products', tags=['products'])
@@ -43,10 +43,11 @@ router.add_api_route(
     dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(
-    '/image/{pk}/', handler.update_product_image, methods=['patch'],
+    '/image/{pk}/', handler.delete_product_image, methods=['delete'],
     dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(
-    '/image/{pk}/', handler.delete_product_image, methods=['delete'],
-    dependencies=[Depends(core_depends.is_admin)]
+    '/like/{pk}/', handler.like_dislike_product, methods=['get'],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(core_depends.is_authenticated)]
 )

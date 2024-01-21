@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from typing import NamedTuple, Protocol, NoReturn, Annotated
@@ -35,7 +34,7 @@ class ProductServiceInterface(Protocol):
             self,
             filters: Annotated[depends.FilterProduct, Depends()],
             tags: Annotated[list[str] | None, Query()] = None, user_id: uuid.UUID = None
-    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+    ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         ...
 
     async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
@@ -50,11 +49,10 @@ class ProductServiceInterface(Protocol):
     async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
         ...
 
-    async def update_product_image(
-            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
         ...
 
-    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+    async def like_dislike_product(self, **kwargs) -> None:
         ...
 
 
@@ -84,7 +82,7 @@ class ProductServiceV1(NamedTuple):
             self,
             filters: Annotated[depends.FilterProduct, Depends()],
             tags: Annotated[list[str] | None, Query()] = None, user_id: uuid.UUID = None
-    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+    ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         filters_list = [models.Product.is_active == True]
         if tags:
             filters_list.extend(models.Product.tags.any(models.Tag.id == tag) for tag in tags)
@@ -112,9 +110,8 @@ class ProductServiceV1(NamedTuple):
     async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
         return await self.repo.create_product_image(data)
 
-    async def update_product_image(
-            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
-        await self.repo.update_product_image(pk, data)
-
     async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
         await self.repo.delete_product_image(filters)
+
+    async def like_dislike_product(self, **kwargs) -> None:
+        await self.repo.like_dislike_product(**kwargs)

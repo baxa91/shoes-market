@@ -35,10 +35,9 @@ class ProductHandler(NamedTuple):
             self, request: Request,
             filters: Annotated[depends.FilterProduct, Depends()],
             tags: Annotated[list[str] | None, Query()] = None
-    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+    ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         if request.state.is_authenticated:
             return await self.service.get_products(filters, tags, request.state.user.get('id'))
-
         return await self.service.get_products(filters, tags)
 
     async def get_product(self, pk: uuid.UUID) -> schemas.DetailProduct:
@@ -58,10 +57,10 @@ class ProductHandler(NamedTuple):
     ) -> schemas.ProductImage:
         return await self.service.create_product_image(data)
 
-    async def update_product_image(self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> dict:
-        await self.service.update_product_image(pk, data)
-        return {'success': constants.UPDATE_PRODUCT_IMAGE}
-
     async def delete_product_image(self, pk: uuid.UUID) -> dict:
         await self.service.delete_product_image(filters=(models.ProductImage.id == pk,))
         return {'success': constants.DELETE_PRODUCT_IMAGE}
+
+    async def like_dislike_product(self, request: Request, pk: uuid.UUID) -> None:
+        await self.service.like_dislike_product(
+            **{'client_id': request.state.user.get('id'), 'product_id': pk})

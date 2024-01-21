@@ -3,91 +3,107 @@ import os
 import uuid
 from typing import NamedTuple, Protocol, NoReturn
 
-from sqlalchemy import insert, select, delete, update, desc, asc, case, exists, and_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import insert, select, delete, update, desc, asc, exists
 from sqlalchemy.orm import joinedload, selectinload
 
-from shoes_market import utils, pagination, schemas as core_schemas, settings
+from shoes_market import utils, pagination, schemas as core_schemas, settings, database
 
 from . import models, schemas
 
 
 class ProductRepoInterface(Protocol):
 
-    async def create_tag(self, data: schemas.CreateTag) -> models.Tag:
+    @staticmethod
+    async def create_tag(data: schemas.CreateTag) -> models.Tag:
         ...
 
-    async def get_tag(self, filters: tuple = ()) -> models.Tag:
+    @staticmethod
+    async def get_tag(filters: tuple = ()) -> models.Tag:
         ...
 
-    async def get_tags(self) -> list[schemas.Tag]:
+    @staticmethod
+    async def get_tags() -> list[schemas.Tag]:
         ...
 
-    async def update_tag(self, filters: tuple, data: schemas.CreateTag) -> schemas.Tag:
+    @staticmethod
+    async def update_tag(filters: tuple, data: schemas.CreateTag) -> schemas.Tag:
         ...
 
-    async def delete_tag(self, filters: tuple = ()) -> NoReturn:
+    @staticmethod
+    async def delete_tag(filters: tuple = ()) -> NoReturn:
         ...
 
-    async def create_product(self, data: schemas.CreateProduct) -> models.Product:
+    @staticmethod
+    async def create_product(data: schemas.CreateProduct) -> models.Product:
         ...
 
+    @staticmethod
     async def get_products(
-            self, page: int, page_size: int, filters1,
+            page: int, page_size: int, filters1,
             order_by: bool | None, user_id: uuid.UUID = None, like: bool = False
-    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+    ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         ...
 
-    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
+    @staticmethod
+    async def get_product(filters: tuple = ()) -> schemas.DetailProduct:
         ...
 
-    async def delete_product(self, pk: uuid.UUID) -> NoReturn:
+    @staticmethod
+    async def delete_product(pk: uuid.UUID) -> NoReturn:
         ...
 
-    async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
+    @staticmethod
+    async def update_product(pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         ...
 
-    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
+    @staticmethod
+    async def create_product_image(data: schemas.CreateProductImage) -> schemas.ProductImage:
         ...
 
-    async def update_product_image(
-            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
+    @staticmethod
+    async def delete_product_image(filters: tuple = ()) -> NoReturn:
         ...
 
-    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
+    @staticmethod
+    async def like_dislike_product(**kwargs) -> None:
         ...
 
 
 class ProductRepoV1(NamedTuple):
-    db_session: AsyncSession
 
-    async def create_tag(self, data: schemas.CreateTag) -> models.Tag:
-        return await models.Tag.create(db_session=self.db_session, data=data.model_dump())
+    @staticmethod
+    async def create_tag(data: schemas.CreateTag) -> models.Tag:
+        return await models.Tag.create(db_session=database.async_session(), data=data.model_dump())
 
-    async def get_tag(self, filters: tuple = ()) -> models.Tag:
-        return await models.Tag.get(db_session=self.db_session, filters=filters)
+    @staticmethod
+    async def get_tag(filters: tuple = ()) -> models.Tag:
+        return await models.Tag.get(db_session=database.async_session(), filters=filters)
 
-    async def get_tags(self) -> list[schemas.Tag]:
-        async with self.db_session as session:
+    @staticmethod
+    async def get_tags() -> list[schemas.Tag]:
+        async with database.async_session() as session:
             query = await session.scalars(select(models.Tag))
             result = query.all()
 
         return result
 
-    async def update_tag(self, filters: tuple, data: schemas.CreateTag) -> schemas.Tag:
+    @staticmethod
+    async def update_tag(filters: tuple, data: schemas.CreateTag) -> schemas.Tag:
         await models.Tag.update(
-            db_session=self.db_session, filters=filters, data=data.model_dump())
+            db_session=database.async_session(), filters=filters, data=data.model_dump())
 
-        return await models.Tag.get(db_session=self.db_session, filters=filters)
+        return await models.Tag.get(db_session=database.async_session(), filters=filters)
 
-    async def delete_tag(self, filters: tuple = ()) -> NoReturn:
-        await models.Tag.delete(self.db_session, filters)
+    @staticmethod
+    async def delete_tag(filters: tuple = ()) -> NoReturn:
+        await models.Tag.delete(database.async_session(), filters)
 
-    async def create_product(self, data: schemas.CreateProduct) -> models.Product:
+    @staticmethod
+    async def create_product(data: schemas.CreateProduct) -> models.Product:
         data_dict = data.model_dump()
         tag_dict = data_dict.pop('tags')
         main_image = data_dict.pop('main_image')
-        async with self.db_session as session:
+        async with database.async_session() as session:
             file = base64.b64decode(main_image)
             file_path = await utils.create_mediafile('products/', file)
             data_dict['main_image'] = file_path
@@ -114,21 +130,18 @@ class ProductRepoV1(NamedTuple):
 
         return product.first()
 
+    @staticmethod
     async def get_products(
-            self, page: int, page_size: int, filters,
+            page: int, page_size: int, filters,
             order_by: bool | None, user_id: uuid.UUID = None, like: bool = False
-    ) -> core_schemas.PaginatedResponse[schemas.Product]:
+    ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         def base_query():
             query = select(models.Product).where(filters).options(
-                selectinload(models.Product.tags), selectinload(models.Product.images))
-            if user_id:
-                query = query.add_columns(case((and_(
-                    models.Favorite.client_id == user_id,
-                    models.Favorite.product_id == models.Product.id), True), else_=False
-                ).label('is_favorite'))
-                if like:
-                    query = query.join(models.Favorite,
-                                       models.Favorite.product_id == models.Product.id)
+                selectinload(models.Product.tags), selectinload(models.Product.images),
+                selectinload(models.Product.favorites))
+            if like:
+                query = query.join(
+                    models.Favorite, models.Favorite.c.product_id == models.Product.id)
             return query
 
         query = base_query()
@@ -140,15 +153,17 @@ class ProductRepoV1(NamedTuple):
             query = query.order_by(desc(models.Product.created_at))
 
         return await pagination.paginate(
-            self.db_session, query,
-            page, page_size, schemas.Product, *['is_favorite'] if user_id else []
+            database.async_session(), query,
+            page, page_size, schemas.ListProduct, **{'user_id': user_id}
         )
 
-    async def get_product(self, filters: tuple = ()) -> schemas.DetailProduct:
-        return await models.Product.get(self.db_session, filters, *['tags', 'images'])
+    @staticmethod
+    async def get_product(filters: tuple = ()) -> schemas.DetailProduct:
+        return await models.Product.get(database.async_session(), filters, *['tags', 'images'])
 
-    async def delete_product(self, pk: uuid.UUID) -> NoReturn:
-        async with self.db_session as session, session.begin():
+    @staticmethod
+    async def delete_product(pk: uuid.UUID) -> NoReturn:
+        async with database.async_session() as session, session.begin():
             rows = await session.scalars(
                 select(models.ProductImage).where(models.ProductImage.product_id == pk)
             )
@@ -160,9 +175,10 @@ class ProductRepoV1(NamedTuple):
             await session.execute(query)
             await session.commit()
 
-    async def update_product(self, pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
+    @staticmethod
+    async def update_product(pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
         product_dict = data.model_dump(exclude_unset=True)
-        async with self.db_session as session, session.begin():
+        async with database.async_session() as session, session.begin():
             if product_dict.get('tags'):
                 tags = product_dict.pop('tags')
                 tag_list = []
@@ -176,6 +192,13 @@ class ProductRepoV1(NamedTuple):
                     })
 
                 await session.execute(insert(models.ProductTag).values(tag_list))
+            if product_dict.get('main_image'):
+                file = base64.b64decode(product_dict.get('main_image'))
+                file_path = await utils.create_mediafile('products/', file)
+                product_dict['main_image'] = file_path
+                if product_dict.get('old_main_image'):
+                    os.remove(f'{settings.MEDIA}{product_dict.get("old_main_image")}')
+                    del product_dict['old_main_image']
 
             if product_dict:
                 query = update(models.Product).where(
@@ -193,9 +216,10 @@ class ProductRepoV1(NamedTuple):
 
         return product.one_or_none()
 
-    async def create_product_image(self, data: schemas.CreateProductImage) -> schemas.ProductImage:
-        async with self.db_session as session, session.begin():
-            image_dict = {'product_id': data.product_id, 'is_base': data.is_base}
+    @staticmethod
+    async def create_product_image(data: schemas.CreateProductImage) -> schemas.ProductImage:
+        async with database.async_session() as session, session.begin():
+            image_dict = {'product_id': data.product_id}
             file = base64.b64decode(data.image)
             file_path = await utils.create_mediafile('products/', file)
             image_dict['image'] = file_path
@@ -208,12 +232,19 @@ class ProductRepoV1(NamedTuple):
 
         return row
 
-    async def update_product_image(
-            self, pk: uuid.UUID, data: schemas.UpdateProductImage) -> NoReturn:
-        data_dict = data.model_dump()
-        del data_dict['product_id']
-        filters = (models.ProductImage.id == pk,)
-        await models.ProductImage.update(self.db_session, filters, data_dict)
+    @staticmethod
+    async def delete_product_image(filters: tuple = ()) -> NoReturn:
+        await models.ProductImage.delete(database.async_session(), filters)
 
-    async def delete_product_image(self, filters: tuple = ()) -> NoReturn:
-        await models.ProductImage.delete(self.db_session, filters)
+    @staticmethod
+    async def like_dislike_product(**kwargs) -> None:
+        fields = [getattr(models.Favorite.c, field) == value for field, value in kwargs.items()]
+        query = select(exists().where(*fields))
+        async with database.async_session() as session, session.begin():
+            result = await session.execute(query)
+            if not result.scalar():
+                await session.execute(insert(models.Favorite).values([kwargs]))
+            else:
+                del_query = delete(models.Favorite).where(*fields)
+                await session.execute(del_query)
+            await session.commit()

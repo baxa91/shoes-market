@@ -37,9 +37,3 @@ class ImageBaseException(ValueError):
     def __init__(self, *args):
         super().__init__(
             _('Главное фото, может быть только одна'), *args)
-
-
-class DoesNotExistsException(ValueError):
-
-    def __init__(self, *args):
-        super().__init__(_('Объект не существует'), *args)

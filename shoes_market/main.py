@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from shoes_market import users, connection, middleware, settings, products
+from shoes_market import users, connection, middleware, settings, products, orders
 
 
 os.makedirs(settings.MEDIA, exist_ok=True)
@@ -29,6 +29,7 @@ app.add_middleware(middleware.JWTMiddleware, secret_key=settings.SECRET_KEY)
 api_router = APIRouter(prefix='/api')
 api_router.include_router(users.router)
 api_router.include_router(products.router)
+api_router.include_router(orders.router)
 
 app.include_router(api_router)
 

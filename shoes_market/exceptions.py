@@ -41,3 +41,13 @@ class PermissionDenied(HTTPException):
         headers: dict | None = None,
     ) -> None:
         super().__init__(status_code=status_code, detail=detail, headers=headers)
+
+
+class DoesNotExistsException(HTTPException):
+
+    def __init__(
+            self, status_code: int = status.HTTP_400_BAD_REQUEST,
+            detail: Any = 'Объект не существует',
+            headers: dict | None = None,
+    ) -> None:
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
