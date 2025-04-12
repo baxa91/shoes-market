@@ -31,6 +31,7 @@ media/
 static/
 env/
 .idea/
+local_postgres_data/
 
 # javascript
 package-lock.json

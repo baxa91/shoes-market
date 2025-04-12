@@ -60,15 +60,6 @@ class CreateUser(BaseModel):
 
         return phone_number
 
-    @field_validator('email')
-    def validate_email(cls, email: str):
-        query = exists().where(models.User.email == email)
-        with database.session() as session:
-            if session.query(query).scalar():
-                raise exceptions.EmailAlreadyExistException
-
-        return email
-
 
 class UpdateUser(BaseModel):
     nickname: str | None = None
