@@ -11,9 +11,7 @@ from shoes_market import users, connection, middleware, settings, products, orde
 os.makedirs(settings.MEDIA, exist_ok=True)
 app = FastAPI(default_response_class=ORJSONResponse)
 app.mount("/media", StaticFiles(directory=settings.MEDIA_PATH), name="media")
-origins = [
-    "http://localhost",
-    "http://localhost:8080",
+origins = ["http://localhost:3000", "http://127.0.0.1:3000"
 ]
 
 app.add_middleware(

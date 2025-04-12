@@ -12,7 +12,7 @@ router = APIRouter(prefix='/products', tags=['products'])
 
 router.add_api_route(
     '/', handler.create_product, methods=['post'], response_model=schemas.Product,
-    dependencies=[Depends(core_depends.is_admin)]
+    # dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route('/', handler.get_products, methods=['get'])
 router.add_api_route('/tags/', handler.get_tags, methods=['get'])
@@ -23,11 +23,11 @@ router.add_api_route(
 )
 router.add_api_route(
     '/{pk}/', handler.update_product, methods=['patch'],
-    dependencies=[Depends(core_depends.is_admin)]
+    # dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(
     '/tags/', handler.create_tag, methods=['post'],
-    dependencies=[Depends(core_depends.is_admin)]
+    # dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route('/tags/{pk}/', handler.get_tag)
 router.add_api_route(
@@ -40,7 +40,7 @@ router.add_api_route(
 )
 router.add_api_route(
     '/image/{pk}/', handler.create_product_image, methods=['post'],
-    dependencies=[Depends(core_depends.is_admin)]
+    # dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(
     '/image/{pk}/', handler.delete_product_image, methods=['delete'],
@@ -49,5 +49,5 @@ router.add_api_route(
 router.add_api_route(
     '/like/{pk}/', handler.like_dislike_product, methods=['get'],
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(core_depends.is_authenticated)]
+    # dependencies=[Depends(core_depends.is_authenticated)]
 )

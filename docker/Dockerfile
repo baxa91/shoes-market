@@ -1,10 +1,13 @@
 FROM python:3.11-slim as requirements-stage
 
-RUN apt -qqy update
+ENV POETRY_VERSION=1.7.1 \
+    POETRY_VIRTUALENVS_CREATE=false
+
+RUN apt-get update -qq && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+RUN pip install "poetry==$POETRY_VERSION"
 
 WORKDIR /tmp
-
-RUN pip install poetry
 
 COPY ./pyproject.toml ./poetry.lock* /tmp/
 
