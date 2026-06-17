@@ -8,8 +8,13 @@ services:
     container_name: shoes-market
     restart: always
     depends_on:
-      - shoes-market-db
-    command: uvicorn shoes_market.main:app --host 0.0.0.0 --port 8000 --reload
+      create-admin:
+        condition: service_completed_successfully
+    command: >
+      gunicorn shoes_market.main:app
+      -k uvicorn.workers.UvicornWorker
+      --workers 4
+      --bind 0.0.0.0:8000
     ports:
       - "8000:8000"
     env_file:
@@ -17,6 +22,31 @@ services:
     volumes:
       - .:/project
       - /project/bin
+    networks:
+      main: { }
+
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - shoes-market-db
+    env_file:
+      - .env
+    command: alembic upgrade head
+    networks:
+      main: { }
+
+  create-admin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: python -m shoes_market.create_admin
     networks:
       main: { }
 
@@ -29,7 +59,7 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - ./local_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       main: { }
 
@@ -40,3 +70,6 @@ services:
 
 networks:
   main: {}
+
+volumes:
+  postgres_data:

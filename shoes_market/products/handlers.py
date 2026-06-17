@@ -34,11 +34,11 @@ class ProductHandler(NamedTuple):
     async def get_products(
             self, request: Request,
             filters: Annotated[depends.FilterProduct, Depends()],
-            tags: Annotated[list[str] | None, Query()] = None
+            product_tags: list[str] | None = Query(default=None, alias="tags"),
     ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         if request.state.is_authenticated:
-            return await self.service.get_products(filters, tags, request.state.user.get('id'))
-        return await self.service.get_products(filters, tags)
+            return await self.service.get_products(filters, product_tags, request.state.user.get('id'))
+        return await self.service.get_products(filters, product_tags)
 
     async def get_product(self, pk: uuid.UUID) -> schemas.DetailProduct:
         return await self.service.get_product(filters=(models.Product.id == pk,))
