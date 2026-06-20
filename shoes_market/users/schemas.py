@@ -34,6 +34,7 @@ class User(BaseModel):
     })
     birth_date: dt.date | None
     gender: constants.GenderType | None
+    is_staff: bool
 
 
 class CreateUser(BaseModel):
@@ -50,15 +51,15 @@ class CreateUser(BaseModel):
         'example': 'Doe',
     })
 
-    @field_validator('phone_number')
-    def validate_phone_number(cls, phone_number: str):
-        query = exists().where(models.User.phone_number == phone_number)
+    @field_validator('email')
+    def validate_email(cls, email: str):
+        query = exists().where(models.User.email == email)
 
         with database.session() as session:
             if session.query(query).scalar():
-                raise exceptions.PhoneNumberAlreadyExistException
+                raise exceptions.EmailAlreadyExistException
 
-        return phone_number
+        return email
 
 
 class UpdateUser(BaseModel):
@@ -77,20 +78,18 @@ class UpdateUser(BaseModel):
 
 
 class CreateJWT(BaseModel):
-    phone_number: str = Field(json_schema_extra={
-        'example': '+77777777777',
-    })
+    email: str
     password: str = Field(min_length=8, max_length=64)
 
-    @field_validator('phone_number')
-    def validate_phone_number(cls, phone_number: str):
-        query = exists().where(models.User.phone_number == phone_number)
+    @field_validator('email')
+    def validate_email(cls, email: str):
+        query = exists().where(models.User.email == email)
 
         with database.session() as session:
             if not session.query(query).scalar():
-                raise exceptions.PhoneNumberNotFoundExistException
+                raise exceptions.EmailNotFoundExistException
 
-        return phone_number
+        return email
 
 
 class RefreshJWT(BaseModel):
