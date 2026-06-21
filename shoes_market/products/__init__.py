@@ -39,7 +39,7 @@ router.add_api_route(
     dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(
-    '/image/{pk}/', handler.create_product_image, methods=['post'],
+    '/image/', handler.create_product_image, methods=['post'],
     # dependencies=[Depends(core_depends.is_admin)]
 )
 router.add_api_route(

@@ -18,10 +18,12 @@ class Tag(BaseModel):
 
     id: uuid.UUID
     name: str
+    type: str
 
 
 class CreateTag(BaseModel):
     name: str
+    type: str
 
     @field_validator('name')
     def validate_name(cls, name: str):
@@ -32,6 +34,10 @@ class CreateTag(BaseModel):
                 raise exceptions.ExistNameException
 
         return name
+
+class UpdateTag(BaseModel):
+    name: str | None = None
+    type: str | None = None
 
 
 class ProductImage(BaseModel):
@@ -78,6 +84,7 @@ class Product(BaseModel):
     title: str
     tags: list[Tag] = []
     price: int
+    article: str
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
     main_image: str
@@ -100,6 +107,7 @@ class ListProduct(BaseModel):
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
     main_image: str
+    article: str
     is_favorite: bool = False
     favorites: list[User] = []
     created_at: dt.datetime
@@ -129,6 +137,7 @@ class DetailProduct(BaseModel):
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
     main_image: str
+    article: str
     images: list[MiniProductImage]
     created_at: dt.datetime
 
@@ -146,6 +155,7 @@ class CreateProduct(BaseModel):
     tags: list[uuid.UUID]
     currency: str = Field(json_schema_extra={'example': 'KZT'})
     description: str
+    article: str
     main_image: bytes
 
     @field_validator('price')
@@ -175,6 +185,7 @@ class UpdateProduct(BaseModel):
     description: str | None = None
     main_image: bytes | None = None
     old_main_image: bytes | None = None
+    article: str | None = None
     is_active: bool | None = None
 
     @field_validator('price')

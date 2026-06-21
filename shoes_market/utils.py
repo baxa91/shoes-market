@@ -59,11 +59,11 @@ async def create_mediafile(path: str, file: bytes) -> str | None:
         return None
 
     file_name = f'{str(uuid.uuid4())}.webp'
-    os.makedirs(f'{settings.MEDIA}{path}', exist_ok=True)
+    os.makedirs(f'{settings.MEDIA}/{path}', exist_ok=True)
     file_path = f'{path}{file_name}'
     try:
         image = Image.open(io.BytesIO(file))
-        image.save(f'{settings.MEDIA}{file_path}', format='WEBP')
+        image.save(f'{settings.MEDIA}/{file_path}', format='WEBP')
         return file_path
     except Exception:
         raise exceptions.ImageTypeException

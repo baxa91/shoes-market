@@ -22,6 +22,7 @@ class Tag(models.BaseModel):
     __tablename__ = 'tags_tag'
 
     name: Mapped[str] = mapped_column(String(255), index=True, unique=True)
+    type: Mapped[str] = mapped_column(String(255), index=True)
     products = relationship('Product', secondary=ProductTag, back_populates='tags')
 
 
@@ -34,6 +35,7 @@ class Product(models.BaseModel):
     description: Mapped[str] = mapped_column(Text(), nullable=True)
     main_image: Mapped[str] = mapped_column(Text())
     is_active: Mapped[bool] = mapped_column(default=True)
+    article : Mapped[str] = mapped_column(String(255))
     tags = relationship('Tag', secondary=ProductTag, back_populates='products', cascade='all')
     images = relationship('ProductImage', back_populates='products', cascade='all, delete-orphan')
     favorites = relationship(

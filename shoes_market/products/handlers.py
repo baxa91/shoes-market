@@ -20,7 +20,7 @@ class ProductHandler(NamedTuple):
     async def get_tags(self) -> list[schemas.Tag]:
         return await self.service.get_tags()
 
-    async def update_tag(self, pk: uuid.UUID, data: schemas.CreateTag) -> schemas.Tag:
+    async def update_tag(self, pk: uuid.UUID, data: schemas.UpdateTag) -> schemas.Tag:
         return await self.service.update_tag(filters=(models.Tag.id == pk,), data=data)
 
     async def delete_tag(self, pk: uuid.UUID) -> dict:
