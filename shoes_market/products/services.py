@@ -1,7 +1,7 @@
 import uuid
 
 from typing import NamedTuple, Protocol, NoReturn, Annotated
-
+from collections import defaultdict
 from redis import asyncio as aioredis
 from fastapi import Depends, Query
 from sqlalchemy import and_, or_, and_
@@ -85,11 +85,25 @@ class ProductServiceV1(NamedTuple):
     ) -> core_schemas.PaginatedResponse[schemas.ListProduct]:
         filters_list = [models.Product.is_active == True]
         if tags:
-            filters_list.extend(models.Product.tags.any(models.Tag.id == tag) for tag in tags)
-        if filters.price_before:
-            filters_list.append(models.Product.price >= filters.price_before)
+            grouped_tags = defaultdict(list)
+
+            for tag in tags:
+                tag_id, tag_type = tag.split(":", 1)
+                grouped_tags[tag_type].append(tag_id)
+
+            for tag_type, tag_ids in grouped_tags.items():
+                filters_list.append(
+                    models.Product.tags.any(
+                        and_(
+                            models.Tag.type == tag_type,
+                            models.Tag.id.in_(tag_ids),
+                        )
+                    )
+                )
         if filters.price_after:
-            filters_list.append(models.Product.price <= filters.price_after)
+            filters_list.append(models.Product.price >= filters.price_after)
+        if filters.price_before:
+            filters_list.append(models.Product.price <= filters.price_before)
 
         order_by = filters.creasing if filters.creasing is not None else None
         like = filters.favorites is True and user_id is not None

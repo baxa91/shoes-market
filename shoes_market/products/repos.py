@@ -169,7 +169,7 @@ class ProductRepoV1(NamedTuple):
             )
             row = rows.all()
             for image in row:
-                os.remove(f'{settings.MEDIA}{image.image}')
+                os.remove(f'{settings.MEDIA}/{image.image}')
 
             query = delete(models.Product).where(models.Product.id == pk)
             await session.execute(query)

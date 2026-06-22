@@ -7,14 +7,33 @@ from shoes_market import models
 
 
 ProductTag = Table(
-    'product_tag', models.Base.metadata,
-    Column('product_id', ForeignKey('products_product.id'), primary_key=True),
-    Column('tag_id', ForeignKey('tags_tag.id'), primary_key=True)
+    "product_tag",
+    models.Base.metadata,
+    Column(
+        "product_id",
+        ForeignKey("products_product.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "tag_id",
+        ForeignKey("tags_tag.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
+
 Favorite = Table(
-    'favorite_products', models.Base.metadata,
-    Column('product_id', ForeignKey('products_product.id'), primary_key=True),
-    Column('client_id', ForeignKey('users_user.id'), primary_key=True)
+    "favorite_products",
+    models.Base.metadata,
+    Column(
+        "product_id",
+        ForeignKey("products_product.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "client_id",
+        ForeignKey("users_user.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 

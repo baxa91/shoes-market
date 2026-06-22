@@ -105,7 +105,6 @@ class ListProduct(BaseModel):
     tags: list[Tag] = []
     price: int
     currency: str = Field(json_schema_extra={'example': 'KZT'})
-    description: str
     main_image: str
     article: str
     is_favorite: bool = False

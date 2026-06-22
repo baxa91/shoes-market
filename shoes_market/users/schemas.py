@@ -43,7 +43,7 @@ class CreateUser(BaseModel):
         'example': '+77777777777',
     })
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str
     first_name: str = Field(json_schema_extra={
         'example': 'John',
     })
@@ -60,6 +60,23 @@ class CreateUser(BaseModel):
                 raise exceptions.EmailAlreadyExistException
 
         return email
+
+    @field_validator('phone_number')
+    def validate_phone_number(cls, phone_number: str):
+        query = exists().where(models.User.phone_number == phone_number)
+
+        with database.session() as session:
+            if session.query(query).scalar():
+                raise exceptions.PhoneNumberAlreadyExistException
+
+        return phone_number
+
+    @field_validator('password')
+    def validate_password(cls, password: str):
+        if len(password) < 8:
+            raise exceptions.PasswordException
+
+        return password
 
 
 class UpdateUser(BaseModel):
