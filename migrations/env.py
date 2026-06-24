@@ -11,6 +11,7 @@ from shoes_market import models, settings
 from shoes_market.users import models as user_models
 from shoes_market.products import models as product_models
 from shoes_market.orders import models as order_models
+from shoes_market.about_us import models as about_us_models
 
 
 # this is the Alembic Config object, which provides

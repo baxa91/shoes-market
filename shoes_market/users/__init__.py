@@ -31,3 +31,8 @@ router.add_api_route('/', handler.get_users, methods=['get'])
 router.add_api_route(
     '/', handler.create_user, methods=['post'], status_code=status.HTTP_201_CREATED,
 )
+router.add_api_route('/forgot-password/', handler.forgot_password, methods=['post'])
+router.add_api_route('/reset-password/', handler.reset_password, methods=['post'])
+router.add_api_route('/change-password/', handler.change_password, methods=['patch'])
+router.add_api_route('/change-email/session/', handler.change_email_session, methods=['post'])
+router.add_api_route('/change-email/', handler.change_email, methods=['patch'])

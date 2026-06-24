@@ -13,9 +13,6 @@ from shoes_market.products import exceptions
 
 
 def generate_code(k: int = 6) -> str:
-    if settings.DEBUG:
-        return '4' * k
-
     return ''.join(random.choices('0123456789', k=k))
 
 

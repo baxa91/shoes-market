@@ -7,6 +7,7 @@ from shoes_market.database import async_session
 from shoes_market.users import models
 from shoes_market.orders import models as prod_models
 from shoes_market.products import models as orders_models
+from shoes_market.about_us import models as about_us_models
 from shoes_market.utils import hash_password
 
 

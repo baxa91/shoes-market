@@ -3,6 +3,7 @@ from typing import NamedTuple, Annotated
 from fastapi import Depends, Request
 
 from shoes_market import schemas as core_schemas, depends as core_depends
+from sqlalchemy.sql.functions import user
 
 from . import depends, schemas, services, models
 
@@ -46,3 +47,19 @@ class UserHandler(NamedTuple):
 
     async def refresh_jwt(self, data: schemas.RefreshJWT) -> core_schemas.JWT:
         return await self.service.refresh_jwt(data=data)
+
+    async def forgot_password(self, data: schemas.ForgotPassword) -> None:
+        await self.service.forgot_password(data=data.model_dump())
+
+    async def reset_password(self, data: schemas.ResetPassword) -> None:
+        await self.service.reset_password(data=data.model_dump())
+
+    async def change_password(self, request: Request, data: schemas.ChangePassword) -> None:
+        await self.service.change_password(user_id=request.state.user.get('id'), data=data.model_dump())
+
+    async def change_email_session(self, request: Request, data: schemas.ForgotPassword) -> core_schemas.Session:
+        return await self.service.change_email_session(request.state.user, data=data.model_dump())
+
+    async def change_email(self, data: core_schemas.CreateSession) -> None:
+        await self.service.change_email(data=data.model_dump())
+

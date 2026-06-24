@@ -8,6 +8,10 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', False)
 
 DATABASE_URL = os.getenv('DATABASE_URL')
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+MAIL_FROM = os.getenv('MAIL_FROM')
+MAIL_FROM_NAME = os.getenv('MAIL_FROM_NAME')
+FRONTEND_URL = os.getenv('FRONTEND_URL')
 REDIS_URL = os.getenv('REDIS_URL', None)
 MEDIA_URL = os.getenv('MEDIA_URL', 'http://0.0.0.0:8000/media/')
 

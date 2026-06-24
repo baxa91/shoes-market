@@ -111,3 +111,17 @@ class CreateJWT(BaseModel):
 
 class RefreshJWT(BaseModel):
     refresh: str
+
+
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    token: str
+    password: str
+
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str

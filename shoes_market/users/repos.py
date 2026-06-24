@@ -1,7 +1,8 @@
+import uuid
 from typing import NamedTuple, Protocol
-
 from sqlalchemy import delete, insert, select, update
 from shoes_market import pagination, schemas as core_schemas, database, utils
+from fastapi import HTTPException, status
 
 from . import exceptions, models, schemas
 
@@ -21,6 +22,22 @@ class UserRepoInterface(Protocol):
         ...
 
     async def update_user(self, filter_kwargs: dict | None = None, **kwargs) -> models.User:
+        ...
+
+    @staticmethod
+    async def get_user_by_email(email: str) -> None:
+        ...
+
+    @staticmethod
+    async def update_user_password(user_id: str, password: str) -> None:
+        ...
+
+    @staticmethod
+    async def change_password(
+            user_id: uuid.UUID,
+            old_password: str,
+            new_password: str,
+    ) -> None:
         ...
 
 
@@ -71,9 +88,34 @@ class UserRepoV1(NamedTuple):
     async def update_user(self, filter_kwargs: dict | None = None, **kwargs) -> models.User:
 
         async with database.async_session() as session:
+
+            if "phone_number" in kwargs:
+                filters = self._filters(**filter_kwargs)
+
+                current_user = await session.scalar(
+                    select(self.model).where(*filters)
+                )
+
+                exists = await session.scalar(
+                    select(self.model).where(
+                        self.model.phone_number == kwargs["phone_number"],
+                        self.model.id != current_user.id
+                    )
+                )
+
+                if exists:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Пользователь с таким номером уже существует"
+                    )
+
             filters = self._filters(**filter_kwargs)
+
             rows = await session.scalars(
-                update(self.model).returning(self.model).where(*filters).values(**kwargs),
+                update(self.model)
+                .returning(self.model)
+                .where(*filters)
+                .values(**kwargs),
             )
 
             try:
@@ -98,3 +140,50 @@ class UserRepoV1(NamedTuple):
             kwargs = {}
 
         return [getattr(self.model, k) == v for k, v in kwargs.items()]
+
+
+    @staticmethod
+    async def get_user_by_email(email: str) -> None:
+        async with database.async_session() as session:
+            return await session.scalar(
+                select(models.User).where(
+                    models.User.email == email
+                )
+            )
+
+    @staticmethod
+    async def update_user_password(user_id: str, password: str) -> None:
+        async with database.async_session() as session:
+            user = await session.get(models.User, user_id)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Пользователь не найден"
+                )
+
+            user.password = password
+
+            await session.commit()
+
+    @staticmethod
+    async def change_password(
+            user_id: uuid.UUID,
+            old_password: str,
+            new_password: str,
+    ) -> None:
+        async with database.async_session() as session:
+            user = await session.get(models.User, user_id)
+
+            if not user:
+                raise exceptions.UserNotFoundException
+
+            if not utils.verify_password(old_password, user.password):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Неверный текущий пароль",
+                )
+
+            user.password = utils.hash_password(new_password)
+
+            await session.commit()
