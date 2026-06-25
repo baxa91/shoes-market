@@ -4,7 +4,7 @@ from typing import NamedTuple, Protocol
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
-from shoes_market import database
+from shoes_market import database, utils
 
 from . import models, schemas
 
@@ -125,6 +125,9 @@ class AboutUsRepoV1(NamedTuple):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Фото не найдено"
                 )
+
+            if image.image:
+                utils.storage.delete_file_by_url(image.image)
 
             await session.delete(image)
             await session.commit()

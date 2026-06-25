@@ -1,15 +1,15 @@
 import datetime
-import io
-import os
 import random
 import uuid
-
+import base64
+import boto3
 import jwt
 from PIL import Image
-
+from io import BytesIO
 from passlib.handlers.pbkdf2 import pbkdf2_sha256
 from shoes_market import settings, schemas
-from shoes_market.products import exceptions
+from urllib.parse import urlparse, unquote
+from botocore.client import Config
 
 
 def generate_code(k: int = 6) -> str:
@@ -22,7 +22,7 @@ def create_jwt(
     refresh_ttl: int = settings.JWT_REFRESH_TTL,
     secret: str = settings.SECRET_KEY
 ) -> schemas.JWT:
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
     access_exp = now + datetime.timedelta(seconds=access_ttl)
     refresh_exp = now + datetime.timedelta(seconds=refresh_ttl)
 
@@ -51,16 +51,84 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return pbkdf2_sha256.verify(password, hashed_password)
 
 
-async def create_mediafile(path: str, file: bytes) -> str | None:
-    if not file:
-        return None
+class R2StorageService:
+    def __init__(self):
+        self.bucket = settings.R2_BUCKET_NAME
+        self.public_url = settings.R2_PUBLIC_URL.rstrip("/")
 
-    file_name = f'{str(uuid.uuid4())}.webp'
-    os.makedirs(f'{settings.MEDIA}/{path}', exist_ok=True)
-    file_path = f'{path}{file_name}'
-    try:
-        image = Image.open(io.BytesIO(file))
-        image.save(f'{settings.MEDIA}/{file_path}', format='WEBP')
-        return file_path
-    except Exception:
-        raise exceptions.ImageTypeException
+        self.client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+            config=Config(signature_version="s3v4"),
+            region_name="auto",
+        )
+
+    async def upload_base64_image(
+        self,
+        base64_image: str,
+        folder: str,
+        quality: int = 80,
+    ) -> str:
+        folder = folder.strip("/")
+
+        image_bytes = self._decode_base64_image(base64_image)
+
+        image = Image.open(BytesIO(image_bytes))
+        image = image.convert("RGB")
+
+        output = BytesIO()
+        image.save(
+            output,
+            format="WEBP",
+            quality=quality,
+            method=6,
+            optimize=True,
+        )
+        output.seek(0)
+
+        key = f"{folder}/{uuid.uuid4()}.webp"
+
+        self.client.upload_fileobj(
+            output,
+            self.bucket,
+            key,
+            ExtraArgs={
+                "ContentType": "image/webp",
+                "CacheControl": "public, max-age=31536000",
+            },
+        )
+
+        return f"{self.public_url}/{key}"
+
+    def delete_file_by_url(self, url: str) -> None:
+        key = self._extract_key_from_url(url)
+
+        self.client.delete_object(
+            Bucket=self.bucket,
+            Key=key,
+        )
+
+    @staticmethod
+    def _decode_base64_image(base64_image: str) -> bytes:
+        if isinstance(base64_image, bytes):
+            base64_image = base64_image.decode()
+
+        if "," in base64_image:
+            base64_image = base64_image.split(",", 1)[1]
+
+        return base64.b64decode(base64_image)
+
+    @staticmethod
+    def _extract_key_from_url(url: str) -> str:
+        parsed = urlparse(url)
+        key = unquote(parsed.path.lstrip("/"))
+
+        if not key:
+            raise ValueError("Не удалось получить key из URL")
+
+        return key
+
+
+storage = R2StorageService()

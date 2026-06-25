@@ -1,15 +1,14 @@
 import uuid
 import datetime as dt
-from urllib.parse import urljoin
 
 from pydantic import (
     BaseModel, Field, field_validator, model_validator,
-    ConfigDict, field_serializer, ValidationInfo
+    ConfigDict, ValidationInfo
 )
 
 from sqlalchemy import exists
 
-from shoes_market import database, settings, exceptions as core_exp
+from shoes_market import database, exceptions as core_exp
 from . import exceptions, models
 
 
@@ -47,24 +46,10 @@ class ProductImage(BaseModel):
     product_id: uuid.UUID
     image: str
 
-    @field_serializer('image')
-    def serialize_image(self, image: str):
-        if not image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, image)
-
 
 class MiniProductImage(BaseModel):
     id: uuid.UUID
     image: str
-
-    @field_serializer('image')
-    def serialize_image(self, image: str):
-        if not image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, image)
 
 
 class CreateProductImage(BaseModel):
@@ -90,13 +75,6 @@ class Product(BaseModel):
     main_image: str
     created_at: dt.datetime
 
-    @field_serializer('main_image')
-    def serialize_image(self, main_image: str):
-        if not main_image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, main_image)
-
 
 class ListProduct(BaseModel):
 
@@ -110,13 +88,6 @@ class ListProduct(BaseModel):
     is_favorite: bool = False
     favorites: list[User] = []
     created_at: dt.datetime
-
-    @field_serializer('main_image')
-    def serialize_image(self, main_image: str):
-        if not main_image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, main_image)
 
     @model_validator(mode='after')
     def validate_is_base(self, info: ValidationInfo):
@@ -140,13 +111,6 @@ class DetailProduct(BaseModel):
     images: list[MiniProductImage]
     created_at: dt.datetime
 
-    @field_serializer('main_image')
-    def serialize_image(self, main_image: str):
-        if not main_image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, main_image)
-
 
 class CreateProduct(BaseModel):
     title: str
@@ -164,17 +128,6 @@ class CreateProduct(BaseModel):
 
         return price
 
-    @field_validator('tags')
-    def validate_tags(cls, tags: list):
-        for tag in tags:
-            query = exists().where(models.Tag.id == tag)
-
-            with database.session() as session:
-                if not session.query(query).scalar():
-                    raise core_exp.DoesNotExistsException
-
-        return tags
-
 
 class UpdateProduct(BaseModel):
     title: str | None = None
@@ -183,7 +136,7 @@ class UpdateProduct(BaseModel):
     currency: str | None = Field(json_schema_extra={'example': 'KZT'}, default=None)
     description: str | None = None
     main_image: bytes | None = None
-    old_main_image: bytes | None = None
+    old_main_image: str | None = None
     article: str | None = None
     is_active: bool | None = None
 
@@ -193,17 +146,6 @@ class UpdateProduct(BaseModel):
             raise exceptions.PriceNegativeException
 
         return price
-
-    @field_validator('tags')
-    def validate_tags(cls, tags: list):
-        for tag in tags:
-            query = exists().where(models.Tag.id == tag)
-
-            with database.session() as session:
-                if not session.query(query).scalar():
-                    raise core_exp.DoesNotExistsException
-
-        return tags
 
 
 class CreateProductImageDetail(CreateProductImage):

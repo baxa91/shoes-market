@@ -1,5 +1,4 @@
 import uuid
-import base64
 from typing import NamedTuple, Protocol
 from redis import asyncio as aioredis
 from . import repos, schemas
@@ -47,9 +46,11 @@ class AboutUsServiceV1(NamedTuple):
         await self.repo.update_about_us(data=data)
 
     async def create_about_image(self, data: dict) -> None:
-        file = base64.b64decode(data.pop('image'))
-        file_path = await utils.create_mediafile('about_us/', file)
-        data['image'] = file_path
+        image_url = await utils.storage.upload_base64_image(
+            base64_image=data.pop("image"),
+            folder="about_us",
+        )
+        data['image'] = image_url
         await self.repo.create_about_image(data=data)
 
     async def delete_about_image(self, pk: uuid.UUID) -> None:

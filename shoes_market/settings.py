@@ -14,6 +14,11 @@ MAIL_FROM_NAME = os.getenv('MAIL_FROM_NAME')
 FRONTEND_URL = os.getenv('FRONTEND_URL')
 REDIS_URL = os.getenv('REDIS_URL', None)
 MEDIA_URL = os.getenv('MEDIA_URL', 'http://0.0.0.0:8000/media/')
+R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL')
+R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID')
+R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY')
+R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME')
+R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID')
 
 JWT_ACCESS_TTL = 60 * 60 * 24
 JWT_REFRESH_TTL = 60 * 60 * 24 * 30

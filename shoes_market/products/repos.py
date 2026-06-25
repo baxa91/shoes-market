@@ -1,8 +1,6 @@
-import base64
-import os
 import uuid
 from typing import NamedTuple, Protocol, NoReturn
-
+from fastapi import HTTPException, status
 from sqlalchemy import insert, select, delete, update, desc, asc, exists
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -57,7 +55,7 @@ class ProductRepoInterface(Protocol):
         ...
 
     @staticmethod
-    async def create_product_image(data: schemas.CreateProductImage) -> schemas.ProductImage:
+    async def create_product_image(data: schemas.CreateProductImageDetail) -> schemas.ProductImage:
         ...
 
     @staticmethod
@@ -104,9 +102,11 @@ class ProductRepoV1(NamedTuple):
         tag_dict = data_dict.pop('tags')
         main_image = data_dict.pop('main_image')
         async with database.async_session() as session:
-            file = base64.b64decode(main_image)
-            file_path = await utils.create_mediafile('products/', file)
-            data_dict['main_image'] = file_path
+            main_image_url = await utils.storage.upload_base64_image(
+                base64_image=main_image,
+                folder="products",
+            )
+            data_dict['main_image'] = main_image_url
             rows = await session.scalars(
                 insert(models.Product).returning(models.Product).values(**data_dict)
             )
@@ -164,16 +164,19 @@ class ProductRepoV1(NamedTuple):
     @staticmethod
     async def delete_product(pk: uuid.UUID) -> NoReturn:
         async with database.async_session() as session, session.begin():
-            rows = await session.scalars(
-                select(models.ProductImage).where(models.ProductImage.product_id == pk)
+            product = await session.scalar(
+                select(models.Product)
+                .options(selectinload(models.Product.images))
+                .where(models.Product.id == pk)
             )
-            row = rows.all()
-            for image in row:
-                os.remove(f'{settings.MEDIA}/{image.image}')
 
-            query = delete(models.Product).where(models.Product.id == pk)
-            await session.execute(query)
-            await session.commit()
+            if product.main_image:
+                utils.storage.delete_file_by_url(product.main_image)
+
+            for image in product.images:
+                utils.storage.delete_file_by_url(image.image)
+
+            await session.delete(product)
 
     @staticmethod
     async def update_product(pk: uuid.UUID, data: schemas.UpdateProduct) -> schemas.Product:
@@ -193,11 +196,13 @@ class ProductRepoV1(NamedTuple):
 
                 await session.execute(insert(models.ProductTag).values(tag_list))
             if product_dict.get('main_image'):
-                file = base64.b64decode(product_dict.get('main_image'))
-                file_path = await utils.create_mediafile('products/', file)
-                product_dict['main_image'] = file_path
+                main_image_url = await utils.storage.upload_base64_image(
+                    base64_image=product_dict.get('main_image'),
+                    folder="products",
+                )
+                product_dict['main_image'] = main_image_url
                 if product_dict.get('old_main_image'):
-                    os.remove(f'{settings.MEDIA}{product_dict.get("old_main_image")}')
+                    utils.storage.delete_file_by_url(product_dict.get('old_main_image'))
                     del product_dict['old_main_image']
 
             if product_dict:
@@ -217,12 +222,14 @@ class ProductRepoV1(NamedTuple):
         return product.one_or_none()
 
     @staticmethod
-    async def create_product_image(data: schemas.CreateProductImage) -> schemas.ProductImage:
+    async def create_product_image(data: schemas.CreateProductImageDetail) -> schemas.ProductImage:
         async with database.async_session() as session, session.begin():
             image_dict = {'product_id': data.product_id}
-            file = base64.b64decode(data.image)
-            file_path = await utils.create_mediafile('products/', file)
-            image_dict['image'] = file_path
+            image_url = await utils.storage.upload_base64_image(
+                base64_image=data.image,
+                folder="products",
+            )
+            image_dict['image'] = image_url
             rows = await session.scalars(
                 insert(models.ProductImage).returning(models.ProductImage).values(**image_dict)
             )
@@ -234,7 +241,22 @@ class ProductRepoV1(NamedTuple):
 
     @staticmethod
     async def delete_product_image(filters: tuple = ()) -> NoReturn:
-        await models.ProductImage.delete(database.async_session(), filters)
+        async with database.async_session() as session, session.begin():
+
+            image = await session.scalar(
+                select(models.ProductImage).filter(*filters)
+            )
+
+            if not image:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Нет такого фото"
+                )
+
+            if image.image:
+                utils.storage.delete_file_by_url(image.image)
+
+            await session.delete(image)
 
     @staticmethod
     async def like_dislike_product(**kwargs) -> None:

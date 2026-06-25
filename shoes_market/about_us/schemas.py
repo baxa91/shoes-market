@@ -1,7 +1,5 @@
 import uuid
-from shoes_market import settings
-from urllib.parse import urljoin
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict
 
 
 class CreateAboutUs(BaseModel):
@@ -24,13 +22,6 @@ class AboutImage(BaseModel):
     id: uuid.UUID
     image: str
     sort_order: int
-
-    @field_serializer('image')
-    def serialize_image(self, image: str):
-        if not image:
-            return None
-
-        return urljoin(settings.MEDIA_URL, image)
 
 
 class CreateAboutImage(BaseModel):
